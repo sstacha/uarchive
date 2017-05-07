@@ -88,7 +88,7 @@ create_dated_archive() {
     _f=$(basename "${_fd}")
     debug "f: $_f"
 
-    if echo $IGNORE_FILES | grep -w $_f > /dev/null; then
+    if echo $IGNORE_FILES | grep -w "$_f" > /dev/null; then
         debug "$_f was in the ignore list; not archiving..."
     else
         debug "attempting to date archive: $_fd"
@@ -200,14 +200,22 @@ _archive() {
         # looping through all files in the passed folder and archiving them
         # so it turns out when you use the full path the full path is included no need to append
         for fd in $(find $_full_file* -prune -type f); do
+            debug "creating dated archive for [$fd]..."
             create_dated_archive "$fd"
-            create_current_archive "$fd"
+            if [[ "$_opt_current" = "true" ]]; then
+                debug "creating current archive for [$fd]..."
+                create_current_archive "$fd"
+            fi
         done
 
     elif [[ -f "$_full_file" ]]; then
         fd=$_full_file
+        debug "creating dated archive for [$fd]..."
         create_dated_archive "$fd"
-        create_current_archive "$fd"
+        if [[ "$_opt_current" = "true" ]]; then
+            debug "creating current archive for [$fd]..."
+            create_current_archive "$fd"
+        fi
     else
         debug "[ $_full_file ] not found!"
     fi
@@ -392,46 +400,65 @@ _full_file=$(get_absolute_file)
 
 debug "opt file: $_opt_file"
 debug "full file: $_full_file"
-
-dirs_exist=0
-# check that we have appropriate directories or bail
-if [ -f "$ARCHIVE_DIR" ]; then
-	if [ -f "$CURRENT_DIR" ]; then
-		dirs_exist = 1
-	fi
-fi
-if [ $dirs_exist ]; then
-	debug 'archive and current directories exist; continuing...'
-else
-	echo 'ERROR: archive and current directory does not exist'
-	echo "run: sudo mkdir -p $ARCHIVE_DIR"
-	echo "run: sudo mkdir -p $CURRENT_DIR"
-	echo "run: sudo chown -R ubuntu:_developer $ARCHIVE_DIR"
-	echo "run: sudo chown -R ubuntu:_developer $CURRENT_DIR"
-	echo "run: sudo chmod -R 775 $ARCHIVE_DIR"
-	echo "run: sudo chmod -R 775 $CURRENT_DIR"
-	echo " then try archiving your file again"
-	exit 1
-fi		
-
-# ---- begin validation checks ----
 debug "full file: $_full_file"
 
+if [[ -z $ARCHIVE_DATED && ! -z $ARCHIVE_HOME ]]; then
+    ARCHIVE_DATED=$ARCHIVE_HOME/dated
+fi
+if [[ -z $ARCHIVE_CURRENT && ! -z $ARCHIVE_HOME ]]; then
+    ARCHIVE_CURRENT=$ARCHIVE_HOME/current
+fi
+
+#dirs_exist=0
+## check that we have appropriate directories or bail
+#if [ -f "$ARCHIVE_DIR" ]; then
+#	if [ -f "$CURRENT_DIR" ]; then
+#		dirs_exist = 1
+#	fi
+#fi
+#if [ $dirs_exist ]; then
+#	debug 'archive and current directories exist; continuing...'
+#else
+#	echo 'ERROR: archive and current directory does not exist'
+#	echo "run: sudo mkdir -p $ARCHIVE_DIR"
+#	echo "run: sudo mkdir -p $CURRENT_DIR"
+#	echo "run: sudo chown -R ubuntu:_developer $ARCHIVE_DIR"
+#	echo "run: sudo chown -R ubuntu:_developer $CURRENT_DIR"
+#	echo "run: sudo chmod -R 775 $ARCHIVE_DIR"
+#	echo "run: sudo chmod -R 775 $CURRENT_DIR"
+#	echo " then try archiving your file again"
+#	exit 1
+#fi		
+
+# ---- begin validation checks ----
+# do not allow archiving current if there is no $ARCHIVE_HOME
+if [[ "$_opt_current" = "true" && "$ARCHIVE_HOME" = "" ]]; then
+    echo "*** ERROR ***"
+    echo "You have requested to archive a current version of one or more files, however, you have not specified a ARCHIVE_HOME environment variable.  You can not archive the current file into itself.  Either remove the -c option to make an archived dated file in the same directory or provide a ARCHIVE_HOME to place dated and current files in."
+    echo ""
+    exit 1
+fi
 # validate that there are not combinations of options that do not make sense
 # it does not make sense to allow archiving current and restoring current at the same time.  r should not be used
 #   with c or s
 if [[ ("$_opt_current" = "true" && "$_opt_restore" = "true") || ("$_opt_sync" = "true" && "$_opt_restore" = "true") ]]; then
+    echo "*** ERROR ***"
     echo "You have requested to both archive current files and restore current files at the same time.  This does not make sense and is probably an error.  If this was truly your intention please enter each command separately in the order you want to do them."
+    echo ""
     exit 1
 fi
 # it does not make sense to sync and archive current at the same time; sync requires file from current_achive and current 
 #   requires external file outside the archive directory
 if [[ "$_opt_current" = "true" && "$_opt_sync" = "true" ]]; then
+    echo "*** ERROR ***"
     echo "You have requested to sync all current files and sync a current file or directory.  This does not make sense since the first case uses the archive directory to specify which files and the second uses an external directory.  Retry with one or the other."
+    echo ""
     exit 1
 fi
 if [[ "$_opt_file" == "$ARCHIVE_DATED" ]]; then
+    echo "*** ERROR ***"
     echo "You have requested an operation against the root archive folder.  This is not allowed.  You need to provide a file inside the archive directory to restore."
+    echo ""
     exit 1
 fi
 # ---- end validation checks ----
@@ -447,7 +474,10 @@ if [ "$_opt_restore" = "true" ]; then
 else
     debug "archiving..."
     # if we are archiving or archiving current do not allow files in the archive directory.  while this might be legitimate in very rare case it is almost always an error.  Let them do copys manually instead
-    if [[ "$(echo $_full_file | grep $ARCHIVE_DIR)" != "" ]]; then
+    debug "full file: $_full_file"
+    debug "archive home: $ARCHIVE_HOME"
+    debug "grep: $(echo $_full_file | grep "$ARCHIVE_HOME")"
+    if [[ "$ARCHIVE_HOME" != "" && "$(echo "$_full_file" | grep "$ARCHIVE_HOME")" != "" ]]; then
         echo "You have requested to archive a file in the archive directory.  This is not allowed as it can cause problems.  You probably meant to archive the acutal file instead optionally passing the -c argument.  However, if you really want to manaipulate files in the archive directory you can do so manually; this is not recommended."
         exit 1
     fi
