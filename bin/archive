@@ -235,7 +235,9 @@ _restore() {
         fi
 
         # loop through each file and send it to its location preserving permissions provided we have something saved off
+        debug "looping through each file in the archive..."
         for fd in $(find $_full_file* -prune -type f); do
+            debug "found [$fd]"
             if [[ -f $ARCHIVE_CURRENT$fd ]]; then
                 restore_current_archive_file "$fd"
             else
