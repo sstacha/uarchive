@@ -5,12 +5,16 @@ Basic script and directories to track and restore config file changes on a serve
 - git clone https://sstacha/uarchive
 - in your ~/.profile
     - add the <clone dir>/bin to your path variable
-        ex: PATH=$PATH:~/uarchive/bin
-    - add the ARCHIVE_DATED=<clone dir>/archive/dated
-        ex: export ARCHIVE_DATED=~/uarchive/archive/dated
-    - add the ARCHIVE_CURRENT=<clone dir>/current
-        ex: export ARCHIVE_DATED=~/uarchive/archive/dated
-        
+        ex: PATH=$PATH:$HOME/uarchive/bin
+
+    OPTIONAL:
+    - add the ARCHIVE_HOME=<clone dir>/archive/
+        ex: export ARCHIVE_HOME=$HOME/uarchive/archive
+
+    NOTE: If you do not add the archive home you will be restricted to using only files in the same directory as the source files.
+
+
+
 - test it
     - create a simple text file in your home directory test.txt with the body testing
     - type: archive -c testing.txt
@@ -32,5 +36,5 @@ If you ever need to rebuild your server:
     - reprovision your machine
     - re-install uarchive
     - clone your private repo into the archive directory
-    - archive -r
-        - this is provided you keep an archive -c of all changed files on the server.
+    - archive -r $UARCHIVE_HOME
+        - this is provided you keep an archive -c of all changed files on the server and have UARCHIVE_HOME set.
