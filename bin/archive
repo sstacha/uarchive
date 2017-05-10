@@ -155,9 +155,21 @@ archive_file() {
         debug "[create_archive] $_f was not in the ignore list; archiving..."
         if [[ "$MAKE_CHANGES" == "true" ]]; then
             debug "[create_archive] copying [$_sfile] to [$_full_file_dated]"
+            # errors if we don't have the directory already.  lets create it
+            dpart=$(dirname "$_full_file_dated")
+            debug "[create_archive] dpart for date archive: [$dpart]"
+            if [[ ! -d "$dpart" && "$dpart" != "" ]]; then
+                try mkdir -p "$dpart"
+            fi
             try cp -p $_sfile $_full_file_dated
             if [[ "$_opt_current" = "true" && "$_enable_current" = "true" ]]; then
                 debug "[create_archive] copying [$_sfile] to [$_full_file_current]"
+                # errors if we don't have the directory already.  lets create it
+                dpart=$(dirname "$_full_file_current")
+                debug "[create_archive] dpart for current archive: [$dpart]"
+                if [[ ! -d "$dpart" && "$dpart" != "" ]]; then
+                    try mkdir -p "$dpart"
+                fi
                 try cp -p $_sfile $_full_file_current
             fi
 
@@ -198,6 +210,7 @@ get_dated_archive_from_file() {
 # in restore_current_file the param is the file to be resotred (not in the archive dir)
 restore_current_file() {
     _sfile="$1"
+    rcf_restore_status=""
     debug "[restore_current_file] _sfile: $_sfile"
     _full_file_current=$(get_current_archive_from_file $_sfile)
     _full_file_dated=$(get_dated_archive_from_file $_sfile)    
@@ -212,12 +225,19 @@ restore_current_file() {
     else
         debug "[restore_current_file] $_f was not in the ignore list; restoring..."
         if [[ "$MAKE_CHANGES" == "true" ]]; then
-            debug "[restore_current_file] copying [$_sfile] to [$_full_file_dated]"
-            try cp -p $_sfile $_full_file_dated
+            if [[ -f "$_sfile" ]]; then
+                debug "[restore_current_file] copying [$_sfile] to [$_full_file_dated]"
+                try cp -p $_sfile $_full_file_dated
+                rcf_restore_status="archived [$_sfile] to [$_full_file_dated]"
+            else
+                debug "[$_sfile] was not found; skipping the date archive"
+            fi
             debug "[restore_current_file] copying [$_full_file_current] to [$_sfile]"
-            try cp -p $_full_file_current $_s_file
+            try cp -p $_full_file_current $_sfile
         fi
-        echo "archived [$_sfile] to [$_full_file_dated]"
+        if [[ ! -z "$rcf_restore_status" ]]; then
+            echo "$rcf_restore_status"
+        fi
         echo "restored [$_full_file_current] to [$_sfile]"
         echo ""
     fi
@@ -225,6 +245,7 @@ restore_current_file() {
 # in restore_current_archive_file the param is the file in the current archive direcotry to be restored
 restore_current_archive_file() {
     _source_archive_file="$1"
+    rcaf_restore_status=""
     debug "[restore_current_archive_file] _source_archive_file: $_source_archive_file"
     _sfile=$(strip_archive_directory $_source_archive_file)
     debug "[restore_current_archive_file] _sfile: $_sfile"
@@ -243,12 +264,19 @@ restore_current_archive_file() {
     else
         debug "[restore_current_archive_file] $_f was not in the ignore list; restoring..."
         if [[ "$MAKE_CHANGES" == "true" ]]; then
-            debug "[restore_current_file] copying [$_sfile] to [$_full_file_dated]"
-            try cp -p $_sfile $_full_file_dated
+            if [[ -f "$_sfile" ]]; then
+                debug "[restore_current_file] copying [$_sfile] to [$_full_file_dated]"
+                try cp -p $_sfile $_full_file_dated
+                rcaf_restore_status="archived [$_sfile] to [$_full_file_dated]"
+            else
+                debug "[$_sfile] was not found; skipping the date archive"
+            fi
             debug "[restore_current_archive_file] copying [$_source_archive_file] to [$_sfile]"
             try cp -p $_source_archive_file $_sfile
         fi
-        echo "archived [$_sfile] to [$_full_file_dated]"
+        if [[ ! -z "$rcaf_restore_status" ]]; then
+            echo "$rcaf_restore_status"
+        fi
         echo "restored [$_source_archive_file] to [$_sfile]"
         echo ""
     fi                
@@ -256,6 +284,7 @@ restore_current_archive_file() {
 # in the restore_dated_archive_file the param is the file in the dated archive direcotry to be restored with the dated extension
 restore_dated_archive_file() {
     _source_dated_archive_file="$1"
+    rdaf_restore_status=""
     debug "[restore_dated_archive_file] _source_dated_archive_file: $_source_dated_archive_file"
     _sfile=$(strip_archive_directory $_source_dated_archive_file)
     if [[ "$(has_date_ext $_sfile)" == "true" ]]; then
@@ -274,12 +303,19 @@ restore_dated_archive_file() {
     else
         debug "[restore_dated_archive_file] $_f was not in the ignore list; restoring..."
         if [[ "$MAKE_CHANGES" == "true" ]]; then
-            debug "[restore_dated_archive_file] copying [$_sfile] to [$_full_file_dated]"
-            try cp -p $_sfile $_full_file_dated
+            if [[ -f "$_sfile" ]]; then
+                debug "[restore_dated_archive_file] copying [$_sfile] to [$_full_file_dated]"
+                try cp -p $_sfile $_full_file_dated
+                rdaf_restore_status="archived [$_sfile] to [$_full_file_dated]"
+            else
+                debug "[$_sfile] was not found; skipping the date archive"
+            fi
             debug "[restore_dated_archive_file] copying [$_source_dated_archive_file] to [$_sfile]"
             try cp -p $_source_dated_archive_file $_sfile
         fi
-        echo "archived [$_sfile] to [$_full_file_dated]"
+        if [[ ! -z "$rdaf_restore_status" ]]; then
+            echo "$rdaf_restore_status"
+        fi
         echo "restored [$_source_dated_archive_file] to [$_sfile]"
         echo ""
     fi                
@@ -386,12 +422,20 @@ _restore() {
             else
                 debug "[_restore] $_f was not in the ignore list; restoring..."
                 if [[ "$MAKE_CHANGES" == "true" ]]; then
-                    debug "[_restore] copying [$_full_file_current] to [$_full_file_archive]"
-                    try cp -p $_full_file_current $_full_file_archive
+                    debug "[_restore] copying [$_full_file_current] to [$_full_file_archive] if it exists"
+                    if [[ -f "$_full_file_current" ]]; then
+                        try cp -p $_full_file_current $_full_file_archive
+                        status_archive="archived existing [$_full_file_current] to [$_full_file_archive]"
+                    else
+                        debug "[_restore] skpping archive of [$_full_file_current] to [$_full_file_archive]"
+                        debug "[_restore] [$_full_file_current] does not exist!"
+                    fi
                     debug "[_restore] copying [$_full_file] to [$_full_file_current]"
                     try cp -p $_full_file $_full_file_current
                 fi
-                echo "archived existing [$_full_file_current] to [$_full_file_archive]"
+                if [[ ! -z "$status_archive" ]]; then
+                    echo "$status_archive"
+                fi
                 echo "restored [$_full_file] to [$_full_file_current]"        
                 echo ""
             fi            
@@ -429,8 +473,17 @@ _restore() {
             # ***** we have a directory outside the archive directory *****
             # *************************************************************
             debug "[_restore] [$_full_file] is outside the archive directory [$UARCHIVE_HOME]"
+            # we fail here if we try to restore a file that was deleted; changing to check the source instead
+            debug "[_restore] _current_folder: $_current_folder"
+            if [[ -z "$_current_folder" ]]; then
+                _ff_current_archive=$_full_file    
+            else
+                _ff_current_archive=$_current_folder$_full_file               
+            fi
+            debug "[_restore] _ff_current_archive: $_ff_current_archive"
             # we either are a file or a directory of files or error if something else
-            if [[ -d "$_full_file" ]]; then
+            #if [[ -d "$_full_file" ]]; then
+            if [[ -d "$_ff_current_archive" ]]; then
                 debug "[_restore] [$_full_file] is a directory"
                  # ask if they want to really do this
                 echo "You have requested to restore all files in directory [$_full_file] from your current archive if it exists"
@@ -450,8 +503,8 @@ _restore() {
                     debug "[_restore] calling restore_current_archive_file [$_full_file/$sfd]"
                     restore_current_file "$full_file/$sfd"
                 done
-               
-            elif [[ -f "$_full_file" ]]; then
+            #elif [[ -f "$_full_file" ]]; then   
+            elif [[ -f "$_ff_current_archive" ]]; then
                 debug "[_restore] [$_full_file] is a file"
                 debug "[_restore] calling restore_current_file [$_full_file]"
                 restore_current_file "$_full_file"
