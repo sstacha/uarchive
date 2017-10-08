@@ -9,7 +9,7 @@ Basic script and directories to track and restore config file changes on a serve
 
     OPTIONAL:
     - add the ARCHIVE_HOME=<clone dir>/archive/
-        ex: export ARCHIVE_HOME=$HOME/uarchive/archive
+        ex: export UARCHIVE_HOME=$HOME/uarchive/archive
 
     NOTE: If you do not add the archive home you will be restricted to using only files in the same directory as the source files.
 
