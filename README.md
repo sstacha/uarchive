@@ -2,7 +2,7 @@
 Basic script and directories to track and restore config file changes on a server.
 
 - cd to a place in your home directory to install uarchive
-- git clone https://sstacha/uarchive.git
+- git clone https://github.com/sstacha/uarchive.git
 - in your ~/.profile
     - add the <clone dir>/bin to your path variable
         ex: PATH=$PATH:$HOME/uarchive/bin
